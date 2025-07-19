@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -21,12 +22,11 @@ var (
 	mojangNameAPI = "https://api.mojang.com/users/profiles/minecraft/"
 )
 
-
-type HTTPClient interface {
-	Get(url string) (*http.Response, error)
+type MinecraftSkinService interface {
+	getHead(ctx context.Context, id uuid.UUID, width, height int, overlay bool) (string, error)
 }
 
-var client HTTPClient = http.DefaultClient
+var client *http.Client = http.DefaultClient
 
 type MojangSessionResponse struct {
 	ID         string     `json:"id"`

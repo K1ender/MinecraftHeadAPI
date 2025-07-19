@@ -6,12 +6,23 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
 	ip := GetIP(os.Getenv("REAL_IP") != "false")
 
-	http.HandleFunc("/head/{nickname}", headHandler)
+	redisURL := os.Getenv("REDIS_URL")
+	parsedURL, err := redis.ParseURL(redisURL)
+	if err != nil {
+		slog.Error(err.Error())
+	}
+	redis := redis.NewClient(parsedURL)
+	NoCacheSkinStore := NewRedisCacheSkinStore(redis)
+	handler := NewHandler(NoCacheSkinStore)
+
+	http.HandleFunc("/head/{nickname}", handler.headHandler)
 	slog.Info(
 		fmt.Sprintf(
 			"listening on http://%s:8080",
@@ -19,10 +30,24 @@ func main() {
 		),
 	)
 
-	http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		slog.Error("failed to start HTTP server", "err", err)
+		os.Exit(1)
+	}
 }
 
-func headHandler(w http.ResponseWriter, r *http.Request) {
+type Handler struct {
+	skinStore MinecraftSkinService
+}
+
+func NewHandler(skinStore MinecraftSkinService) *Handler {
+	return &Handler{
+		skinStore: skinStore,
+	}
+}
+
+func (h *Handler) headHandler(w http.ResponseWriter, r *http.Request) {
 	nick := r.PathValue("nickname")
 	if nick == "" {
 		http.Error(w, "missing nickname", http.StatusBadRequest)
@@ -35,7 +60,7 @@ func headHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pngB64, err := getHead64(id, 256, 256, true)
+	pngB64, err := h.skinStore.getHead(r.Context(), id, 256, 256, false)
 	if err != nil {
 		http.Error(w, "failed to render head: "+err.Error(), http.StatusInternalServerError)
 		return
