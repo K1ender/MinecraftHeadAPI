@@ -2,18 +2,19 @@ package api
 
 import (
 	"encoding/base64"
-	"minecrafthead/internal/mojang"
 	"minecrafthead/internal/service"
 	"net/http"
 )
 
 type Handler struct {
 	skinStore service.MinecraftSkinService
+	uuidStore service.MinecraftNicknameUUIDService
 }
 
-func NewHandler(skinStore service.MinecraftSkinService) *Handler {
+func NewHandler(skinStore service.MinecraftSkinService, uuidStore service.MinecraftNicknameUUIDService) *Handler {
 	return &Handler{
 		skinStore: skinStore,
+		uuidStore: uuidStore,
 	}
 }
 
@@ -24,7 +25,7 @@ func (h *Handler) HeadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := mojang.GetUUIDByNickname(nick)
+	id, err := h.uuidStore.GetUUIDByNickname(r.Context(), nick)
 	if err != nil {
 		http.Error(w, "nickname not found: "+err.Error(), http.StatusNotFound)
 		return

@@ -21,8 +21,11 @@ func main() {
 		slog.Error(err.Error())
 	}
 	redis := redis.NewClient(parsedURL)
-	NoCacheSkinStore := service.NewRedisCacheSkinStore(redis)
-	handler := api.NewHandler(NoCacheSkinStore)
+	RedisCacheSkinStore := service.NewRedisCacheSkinStore(redis)
+
+	RedisCacheUUIDStore := service.NewRedisCacheUUIDService(redis)
+
+	handler := api.NewHandler(RedisCacheSkinStore, RedisCacheUUIDStore)
 
 	http.HandleFunc("/head/{nickname}", handler.HeadHandler)
 	slog.Info(

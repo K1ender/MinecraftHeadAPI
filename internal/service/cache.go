@@ -46,3 +46,39 @@ func (s *RedisCacheSkinStore) GetHead(ctx context.Context, id uuid.UUID, width, 
 
 	return res, nil
 }
+
+// NoCacheUUIDService
+type RedisCacheUUIDService struct {
+	redis *redis.Client
+}
+
+func NewRedisCacheUUIDService(redis *redis.Client) *RedisCacheUUIDService {
+	return &RedisCacheUUIDService{
+		redis: redis,
+	}
+}
+
+func (s *RedisCacheUUIDService) GetUUIDByNickname(ctx context.Context, nick string) (uuid.UUID, error) {
+	res, err := s.redis.Get(ctx, nick).Result()
+	if err != nil && err != redis.Nil {
+		slog.Error("Failed to get UUID from Redis", "nick", nick, "err", err)
+		return uuid.Nil, err
+	}
+
+	if err == redis.Nil {
+		slog.Info("getUUID miss", "nick", nick)
+		id, err := mojang.GetUUIDByNickname(nick)
+		if err != nil {
+			return uuid.Nil, err
+		}
+
+		if err := s.redis.Set(ctx, nick, id.String(), time.Hour*24).Err(); err != nil {
+			slog.Warn("Failed to cache UUID in Redis", "nick", nick, "err", err)
+		}
+
+		slog.Info("getUUID hit", "nick", nick)
+		return id, nil
+	}
+
+	return uuid.Parse(res)
+}
