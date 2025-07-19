@@ -1,8 +1,7 @@
-package main
+package mojang
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -21,36 +20,13 @@ var (
 	sessionAPI    = "https://sessionserver.mojang.com/session/minecraft/profile/"
 	mojangNameAPI = "https://api.mojang.com/users/profiles/minecraft/"
 )
-
-type MinecraftSkinService interface {
-	getHead(ctx context.Context, id uuid.UUID, width, height int, overlay bool) (string, error)
-}
-
 var client *http.Client = http.DefaultClient
 
-type MojangSessionResponse struct {
-	ID         string     `json:"id"`
-	Name       string     `json:"name"`
-	Properties []Property `json:"properties"`
+func SetMojangNameAPI(url string) {
+	mojangNameAPI = url
 }
 
-type Property struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-}
-
-type texturesPayload struct {
-	Textures struct {
-		SKIN struct {
-			URL      string `json:"url"`
-			Metadata struct {
-				Model string `json:"model,omitempty"`
-			} `json:"metadata,omitempty"`
-		} `json:"SKIN"`
-	} `json:"textures"`
-}
-
-func getUUIDByNickname(nick string) (uuid.UUID, error) {
+func GetUUIDByNickname(nick string) (uuid.UUID, error) {
 	resp, err := client.Get(mojangNameAPI + nick)
 	if err != nil {
 		return uuid.Nil, err
@@ -70,8 +46,8 @@ func getUUIDByNickname(nick string) (uuid.UUID, error) {
 	return uuid.Parse(pr.ID)
 }
 
-func getHead64(id uuid.UUID, width, height int, overlay bool) (string, error) {
-	sess, err := getMojangProfile(id)
+func GetHead64(id uuid.UUID, width, height int, overlay bool) (string, error) {
+	sess, err := GetMojangProfile(id)
 	if err != nil {
 		return "", err
 	}
@@ -84,7 +60,7 @@ func getHead64(id uuid.UUID, width, height int, overlay bool) (string, error) {
 		return "", err
 	}
 
-	skinB64, err := getBase64FromURL(tex.Textures.SKIN.URL)
+	skinB64, err := GetBase64FromURL(tex.Textures.SKIN.URL)
 	if err != nil {
 		return "", err
 	}
@@ -115,7 +91,7 @@ func getHead64(id uuid.UUID, width, height int, overlay bool) (string, error) {
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
 
-func getMojangProfile(id uuid.UUID) (*MojangSessionResponse, error) {
+func GetMojangProfile(id uuid.UUID) (*MojangSessionResponse, error) {
 	plain := strings.ReplaceAll(id.String(), "-", "")
 	resp, err := client.Get(sessionAPI + plain)
 	if err != nil {
@@ -132,7 +108,7 @@ func getMojangProfile(id uuid.UUID) (*MojangSessionResponse, error) {
 	return &result, nil
 }
 
-func getBase64FromURL(url string) (string, error) {
+func GetBase64FromURL(url string) (string, error) {
 	resp, err := client.Get(url)
 	if err != nil {
 		return "", err

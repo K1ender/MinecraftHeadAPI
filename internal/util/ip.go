@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"fmt"
@@ -19,8 +19,4 @@ func GetIP(real bool) string {
 	} else {
 		return "localhost"
 	}
-}
-
-func SetMojangNameAPI(url string) {
-	mojangNameAPI = url
 }

@@ -1,8 +1,9 @@
-package main
+package service
 
 import (
 	"context"
 	"log/slog"
+	"minecrafthead/internal/mojang"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,7 +20,7 @@ func NewRedisCacheSkinStore(redis *redis.Client) *RedisCacheSkinStore {
 	}
 }
 
-func (s *RedisCacheSkinStore) getHead(ctx context.Context, id uuid.UUID, width, height int, overlay bool) (string, error) {
+func (s *RedisCacheSkinStore) GetHead(ctx context.Context, id uuid.UUID, width, height int, overlay bool) (string, error) {
 	slog.Info("getHead", "id", id, "width", width, "height", height, "overlay", overlay)
 
 	res, err := s.redis.Get(ctx, id.String()).Result()
@@ -30,7 +31,7 @@ func (s *RedisCacheSkinStore) getHead(ctx context.Context, id uuid.UUID, width, 
 
 	if err == redis.Nil {
 		slog.Info("getHead miss", "id", id)
-		head, err := getHead64(id, width, height, overlay)
+		head, err := mojang.GetHead64(id, width, height, overlay)
 		if err != nil {
 			return "", err
 		}
