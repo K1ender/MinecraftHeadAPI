@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"minecrafthead/internal/api"
+	"minecrafthead/internal/config"
 	"minecrafthead/internal/service"
 	"minecrafthead/internal/util"
 	"net/http"
@@ -13,19 +14,24 @@ import (
 )
 
 func main() {
-	ip := util.GetIP(os.Getenv("REAL_IP") != "false")
+	cfg := config.MustInit()
+	ip := util.GetIP(cfg.UseRealIP)
 
-	redisURL := os.Getenv("REDIS_URL")
-	parsedURL, err := redis.ParseURL(redisURL)
-	if err != nil {
-		slog.Error(err.Error())
+	var handler *api.Handler
+	var CacheSkinStore service.MinecraftSkinService
+	var CacheUUIDStore service.MinecraftNicknameUUIDService
+
+	// FIXME: Thats not the best way? Use factory or something like that
+	if cfg.Cache.Type == config.CacheTypeRedis {
+		redisClient := redis.NewClient(&redis.Options{Addr: cfg.Cache.Redis.URL})
+		CacheSkinStore = service.NewRedisCacheSkinStore(redisClient)
+		CacheUUIDStore = service.NewRedisCacheUUIDService(redisClient)
+	} else {
+		CacheSkinStore = service.NewNoCacheSkinStore()
+		CacheUUIDStore = service.NewNoCacheUUIDService()
 	}
-	redis := redis.NewClient(parsedURL)
-	RedisCacheSkinStore := service.NewRedisCacheSkinStore(redis)
 
-	RedisCacheUUIDStore := service.NewRedisCacheUUIDService(redis)
-
-	handler := api.NewHandler(RedisCacheSkinStore, RedisCacheUUIDStore)
+	handler = api.NewHandler(CacheSkinStore, CacheUUIDStore)
 
 	http.HandleFunc("/head/{nickname}", handler.HeadHandler)
 	slog.Info(
@@ -35,7 +41,7 @@ func main() {
 		),
 	)
 
-	err = http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		slog.Error("failed to start HTTP server", "err", err)
 		os.Exit(1)
