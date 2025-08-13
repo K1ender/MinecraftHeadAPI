@@ -24,6 +24,7 @@ This service fetches and renders the **head image** of a Minecraft player from t
 ### 2. Start Server
 
 ```bash
+export GOEXPERIMENT=jsonv2
 go run ./cmd/server
 ```
 

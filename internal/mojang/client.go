@@ -3,7 +3,7 @@ package mojang
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"image"
 	"image/draw"
@@ -40,7 +40,7 @@ func GetUUIDByNickname(nick string) (uuid.UUID, error) {
 	var pr struct {
 		ID string `json:"id"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &pr); err != nil {
 		return uuid.Nil, err
 	}
 	return uuid.Parse(pr.ID)
@@ -100,11 +100,10 @@ func GetMojangProfile(id uuid.UUID) (*MojangSessionResponse, error) {
 	defer resp.Body.Close()
 
 	var result MojangSessionResponse
-	if body, err := io.ReadAll(resp.Body); err != nil {
-		return nil, err
-	} else if err := json.Unmarshal(body, &result); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
 		return nil, err
 	}
+
 	return &result, nil
 }
 
